@@ -14,7 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          player1_id: string
+          player1_move: string | null
+          player2_id: string
+          player2_move: string | null
+          status: string | null
+          wager_amount: number | null
+          winner_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          player1_id: string
+          player1_move?: string | null
+          player2_id: string
+          player2_move?: string | null
+          status?: string | null
+          wager_amount?: number | null
+          winner_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          player1_id?: string
+          player1_move?: string | null
+          player2_id?: string
+          player2_move?: string | null
+          status?: string | null
+          wager_amount?: number | null
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      matchmaking_queue: {
+        Row: {
+          created_at: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          user_id: string
+          wager_amount: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          user_id: string
+          wager_amount?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          user_id?: string
+          wager_amount?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          location_city: string | null
+          location_lat: number | null
+          location_lng: number | null
+          losses: number | null
+          total_matches: number | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          wins: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          location_city?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          losses?: number | null
+          total_matches?: number | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          wins?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          location_city?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          losses?: number | null
+          total_matches?: number | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          wins?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
