@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CyberButton } from "@/components/ui/cyber-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "@/hooks/useLocation";
+import { useMatchmaking } from "@/hooks/useMatchmaking";
+import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface GameLobbyProps {
   onStartGame: () => void;
@@ -9,7 +14,37 @@ interface GameLobbyProps {
 }
 
 export const GameLobby = ({ onStartGame, onViewLeaderboard, onViewTutorial }: GameLobbyProps) => {
-  const [walletConnected, setWalletConnected] = useState(false);
+  const [userStats, setUserStats] = useState({ wins: 0, losses: 0, totalMatches: 0 });
+  const { user, signOut } = useAuth();
+  const { location, loading: locationLoading, requestLocation } = useLocation();
+  const { inQueue, loading: matchmakingLoading, nearbyPlayers, joinQueue, leaveQueue, challengePlayer } = useMatchmaking();
+  const navigate = useNavigate();
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+    }
+  }, [user, navigate]);
+
+  // Fetch user stats
+  useEffect(() => {
+    if (user) {
+      // TODO: Fetch real user stats from profiles table
+      setUserStats({ wins: 23, losses: 7, totalMatches: 30 });
+    }
+  }, [user]);
+
+  const handleQuickMatch = async () => {
+    if (!location) {
+      await requestLocation();
+    }
+    await joinQueue(0, location ? { lat: location.latitude, lng: location.longitude } : undefined);
+  };
+
+  if (!user) {
+    return null; // Will redirect to auth
+  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -29,12 +64,17 @@ export const GameLobby = ({ onStartGame, onViewLeaderboard, onViewTutorial }: Ga
           </div>
           
           <div className="flex items-center gap-4">
+            {location && (
+              <Badge variant="outline" className="border-accent text-accent">
+                📍 {location.city || 'Location Found'}
+              </Badge>
+            )}
             <CyberButton
-              variant={walletConnected ? "victory" : "neon"}
+              variant="neon"
               size="lg"
-              onClick={() => setWalletConnected(!walletConnected)}
+              onClick={signOut}
             >
-              {walletConnected ? "✓ WALLET CONNECTED" : "CONNECT WALLET"}
+              ⚡ SIGN OUT
             </CyberButton>
           </div>
         </div>
@@ -61,7 +101,11 @@ export const GameLobby = ({ onStartGame, onViewLeaderboard, onViewTutorial }: Ga
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Your Wins</span>
-                <span className="text-accent font-bold">{walletConnected ? "23" : "-"}</span>
+                <span className="text-accent font-bold">{userStats.wins}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Your Losses</span>
+                <span className="text-destructive font-bold">{userStats.losses}</span>
               </div>
             </CardContent>
           </Card>
@@ -76,29 +120,40 @@ export const GameLobby = ({ onStartGame, onViewLeaderboard, onViewTutorial }: Ga
                 Challenge opponents in provably fair Rock Paper Scissors battles
               </p>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <CyberButton
-                  variant="cyber"
-                  size="xl"
-                  onClick={onStartGame}
-                  disabled={!walletConnected}
-                  className="w-full"
-                >
-                  🎮 QUICK MATCH
-                </CyberButton>
-                <CyberButton
-                  variant="neon"
-                  size="xl"
-                  onClick={onStartGame}
-                  disabled={!walletConnected}
-                  className="w-full"
-                >
-                  👥 FIND OPPONENT
-                </CyberButton>
-              </div>
-              
-              {!walletConnected && (
-                <p className="text-sm text-destructive">Connect your wallet to start playing</p>
+              {!inQueue ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CyberButton
+                    variant="cyber"
+                    size="xl"
+                    onClick={handleQuickMatch}
+                    disabled={matchmakingLoading}
+                    className="w-full"
+                  >
+                    {matchmakingLoading ? "⏳ SEARCHING..." : "🎮 QUICK MATCH"}
+                  </CyberButton>
+                  <CyberButton
+                    variant="neon"
+                    size="xl"
+                    onClick={() => !location ? requestLocation() : null}
+                    disabled={locationLoading}
+                    className="w-full"
+                  >
+                    {locationLoading ? "📍 LOCATING..." : "📍 ENABLE LOCATION"}
+                  </CyberButton>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-accent">🔍 Searching for opponents...</div>
+                  <CyberButton
+                    variant="defeat"
+                    size="lg"
+                    onClick={leaveQueue}
+                    disabled={matchmakingLoading}
+                    className="w-full"
+                  >
+                    ❌ LEAVE QUEUE
+                  </CyberButton>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -134,35 +189,65 @@ export const GameLobby = ({ onStartGame, onViewLeaderboard, onViewTutorial }: Ga
           </CyberButton>
         </div>
 
-        {/* Recent Matches */}
+        {/* Nearby Players / Recent Matches */}
         <Card className="mt-12 bg-card/30 border-primary/20 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-primary">Recent Matches</CardTitle>
+            <CardTitle className="text-primary">
+              {nearbyPlayers.length > 0 ? "Nearby Players" : "Recent Matches"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { player: "CyberSamurai", result: "WIN", move: "Rock vs Scissors", time: "2m ago" },
-                { player: "NeonNinja", result: "DRAW", move: "Paper vs Paper", time: "5m ago" },
-                { player: "FlowMaster", result: "LOSS", move: "Scissors vs Rock", time: "8m ago" },
-              ].map((match, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-primary/10">
-                  <div className="flex items-center gap-3">
-                    <span className="text-foreground font-medium">{match.player}</span>
-                    <span className="text-sm text-muted-foreground">{match.move}</span>
+              {nearbyPlayers.length > 0 ? (
+                nearbyPlayers.map((player, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-primary/10">
+                    <div className="flex items-center gap-3">
+                      <span className="text-foreground font-medium">{player.username}</span>
+                      <span className="text-sm text-muted-foreground">{player.location_city}</span>
+                      {player.distance && (
+                        <Badge variant="outline" className="text-xs">
+                          {player.distance.toFixed(1)}km away
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-accent">
+                        {player.wager_amount > 0 ? `${player.wager_amount} FLOW` : 'Free'}
+                      </span>
+                      <CyberButton
+                        variant="neon"
+                        size="sm"
+                        onClick={() => challengePlayer(player.user_id, player.wager_amount)}
+                      >
+                        CHALLENGE
+                      </CyberButton>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-bold ${
-                      match.result === "WIN" ? "text-accent" : 
-                      match.result === "LOSS" ? "text-destructive" : 
-                      "text-secondary"
-                    }`}>
-                      {match.result}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{match.time}</span>
+                ))
+              ) : (
+                [
+                  { player: "CyberSamurai", result: "WIN", move: "Rock vs Scissors", time: "2m ago" },
+                  { player: "NeonNinja", result: "DRAW", move: "Paper vs Paper", time: "5m ago" },
+                  { player: "FlowMaster", result: "LOSS", move: "Scissors vs Rock", time: "8m ago" },
+                ].map((match, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-primary/10">
+                    <div className="flex items-center gap-3">
+                      <span className="text-foreground font-medium">{match.player}</span>
+                      <span className="text-sm text-muted-foreground">{match.move}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-sm font-bold ${
+                        match.result === "WIN" ? "text-accent" : 
+                        match.result === "LOSS" ? "text-destructive" : 
+                        "text-secondary"
+                      }`}>
+                        {match.result}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{match.time}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
